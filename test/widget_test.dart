@@ -24,16 +24,18 @@ void main() {
     expect(find.text('Christmas'), findsWidgets);
     await tester.scrollUntilVisible(find.text('Everleigh'), 300, scrollable: find.byType(Scrollable).first);
     expect(find.text('Everleigh'), findsOneWidget);
-    await tester.scrollUntilVisible(find.text('Christmas').first, -300, scrollable: find.byType(Scrollable).first);
 
     Future<void> see(Finder f) async {
       await tester.scrollUntilVisible(f, 250, scrollable: find.byType(Scrollable).first, maxScrolls: 80);
+      await tester.ensureVisible(f);
       await tester.pumpAndSettle();
     }
 
+    await tester.ensureVisible(find.text('Christmas').first);
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Christmas').first);
     await tester.pumpAndSettle();
-    expect(find.text('Back to occasions'), findsNothing);
+    expect(find.text('All occasions'), findsOneWidget);
     await see(find.text('Fairness check'));
     expect(find.text('Fairness check'), findsOneWidget);
 
