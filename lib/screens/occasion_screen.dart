@@ -236,7 +236,7 @@ class _OccasionScreenState extends State<OccasionScreen> {
       borderRadius: BorderRadius.circular(16),
       child: Container(
         decoration: BoxDecoration(color: occ.surface, border: Border.all(color: occ.line), borderRadius: BorderRadius.circular(16)),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        child: Material(type: MaterialType.transparency, child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
           InkWell(
             onTap: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => PersonScreen(occ: occ, year: year, personId: p.id))),
             child: BandBox(
@@ -271,7 +271,7 @@ class _OccasionScreenState extends State<OccasionScreen> {
               ),
             ),
           ),
-        ]),
+        ])),
       ),
     );
   }
