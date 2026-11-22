@@ -7,6 +7,7 @@ import '../data/logic.dart';
 import '../data/models.dart';
 import '../data/store.dart';
 import '../services/ocr.dart';
+import '../services/photo_prep.dart';
 import '../ui/common.dart';
 import '../ui/themes.dart';
 import 'people_sheets.dart';
@@ -73,7 +74,7 @@ class _GiftFormState extends State<GiftForm> {
     details.text = g.details;
     notes.text = g.notes;
     event.text = g.event;
-    readStatus = "Take or choose a photo and I'll read the item and price.";
+    readStatus = "Take or choose a photo. I'll read any price tag, box or order screen in it.";
   }
 
   @override
@@ -84,41 +85,91 @@ class _GiftFormState extends State<GiftForm> {
     super.dispose();
   }
 
-  Future<void> pick(ImageSource src) async {
+  PhotoRead? lastRead;
+
+  /// [scanOnly]: read a tag, receipt or order screen without replacing the gift's photo
+  /// (unless the gift has no photo yet).
+  Future<void> pick(ImageSource src, {bool scanOnly = false}) async {
     XFile? x;
     try {
-      x = await ImagePicker().pickImage(source: src, maxWidth: 1800, maxHeight: 1800, imageQuality: 85, requestFullMetadata: false);
+      x = await ImagePicker().pickImage(source: src, requestFullMetadata: true);
     } catch (_) {
-      if (mounted) setState(() => readStatus = src == ImageSource.camera ? "Couldn't open the camera. Check Present Tracker is allowed to use it in Settings." : "Couldn't open your photos.");
+      if (mounted) {
+        setState(() => readStatus = src == ImageSource.camera
+            ? "Couldn't open the camera. Check Present Tracker is allowed to use it in Settings."
+            : "Couldn't open your photos. Check Present Tracker is allowed to see them in Settings.");
+      }
       return;
     }
     if (x == null || !mounted) return;
-    final path = x.path;
     setState(() {
-      newPhotoPath = path;
-      readStatus = 'Reading the item and price…';
+      readStatus = 'Reading the photo…';
       readOk = false;
+      lastRead = null;
     });
+    final upright = await prepareFile(x.path);
+    if (!mounted) return;
+    if (!scanOnly || (newPhotoPath == null && g.photo.isEmpty)) setState(() => newPhotoPath = upright);
     try {
-      final info = await readPhoto(path);
+      final read = await readPhoto(upright, turned: (path, turn) => prepareFile(path, maxSide: 2400, turn: turn, suffix: 't$turn'));
       if (!mounted) return;
+      final info = read.info;
       setState(() {
+        lastRead = read;
         if (info.item != null && item.text.trim().isEmpty) item.text = info.item!;
         if (info.price != null && price.text.trim().isEmpty) price.text = info.price!.toStringAsFixed(2);
         if (info.store != null && shop.text.trim().isEmpty) shop.text = info.store!;
         if (info.orderDate != null) g.purchased = info.orderDate!;
         if (info.orderNumber != null && orderNo.text.trim().isEmpty) orderNo.text = info.orderNumber!;
         if (info.details != null && details.text.trim().isEmpty) details.text = info.details!;
-        if (info.price != null) {
+        if (read.lines.isEmpty && read.prices.isEmpty) {
+          readStatus = 'No writing found in this photo. To fill in the name and price, use Scan tag or receipt on the price tag, box, receipt or order screen.';
+        } else if (info.price != null) {
           readOk = true;
-          readStatus = 'Found ${money(info.price)}. Check the details below.';
+          readStatus = 'Found ${money(info.price)}. Check the details below, or tap a line it read to use it instead.';
         } else {
-          readStatus = info.isEmpty ? "Couldn't read this photo. Type the details below." : "Couldn't spot a price. Type it in below.";
+          readStatus = "Couldn't spot a price. Tap one it read below, or type it in.";
         }
       });
-    } catch (_) {
-      if (mounted) setState(() => readStatus = "Couldn't read this photo. Type the details below.");
+    } catch (e) {
+      if (mounted) setState(() => readStatus = "Couldn't read this photo. Type the details below. ($e)");
     }
+  }
+
+  Widget foundText() {
+    final r = lastRead;
+    if (r == null || (r.lines.isEmpty && r.prices.isEmpty)) return const SizedBox.shrink();
+    Widget chip(String text, VoidCallback onTap, {bool strong = false}) => ActionChip(
+          label: Text(text, overflow: TextOverflow.ellipsis),
+          onPressed: onTap,
+          backgroundColor: strong ? occ.accent2 : occ.surface,
+          labelStyle: TextStyle(color: strong ? occ.accent2Ink : occ.ink, fontSize: 13),
+          side: BorderSide(color: occ.line),
+        );
+    return Container(
+      margin: const EdgeInsets.only(top: 14),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(color: occ.panel, borderRadius: BorderRadius.circular(14), border: Border.all(color: occ.line)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('TEXT FOUND IN THE PHOTO', style: TextStyle(fontSize: 11, letterSpacing: 1.6, color: occ.muted, fontWeight: FontWeight.w600)),
+        if (r.prices.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Text('Tap a price to use it:', style: TextStyle(fontSize: 12.5, color: occ.muted)),
+          const SizedBox(height: 4),
+          Wrap(spacing: 6, runSpacing: 6, children: [
+            for (final v in r.prices) chip(money(v), () => setState(() => price.text = v.toStringAsFixed(2)), strong: true),
+          ]),
+        ],
+        if (r.lines.isNotEmpty) ...[
+          const SizedBox(height: 10),
+          Text('Tap a line to use it as the name:', style: TextStyle(fontSize: 12.5, color: occ.muted)),
+          const SizedBox(height: 4),
+          Wrap(spacing: 6, runSpacing: 6, children: [
+            for (final l in r.lines.take(24)) chip(l, () => setState(() => item.text = l)),
+          ]),
+        ],
+      ]),
+    );
   }
 
   Future<void> save() async {
@@ -225,11 +276,18 @@ class _GiftFormState extends State<GiftForm> {
                 FilledButton.icon(onPressed: () => pick(ImageSource.camera), icon: const Icon(Icons.photo_camera), label: const Text('Take photo')),
                 const SizedBox(height: 8),
                 OutlinedButton.icon(onPressed: () => pick(ImageSource.gallery), icon: const Icon(Icons.photo_library_outlined), label: const Text('Choose from library')),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed: () => pick(ImageSource.camera, scanOnly: true),
+                  icon: const Icon(Icons.document_scanner_outlined),
+                  label: const Text('Scan tag or receipt'),
+                ),
                 const SizedBox(height: 6),
                 Text(readStatus, style: TextStyle(fontSize: 12.5, color: readOk ? const Color(0xFF2F7A52) : occ.muted)),
               ]),
             ),
           ]),
+          foundText(),
           label('For'),
           Wrap(spacing: 8, runSpacing: 8, children: [
             for (final p in store.people)

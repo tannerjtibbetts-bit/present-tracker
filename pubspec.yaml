@@ -2,7 +2,7 @@ name: present_tracker
 description: "Present Tracker: keep every gift list beautifully even."
 publish_to: 'none'
 
-version: 1.0.0+1
+version: 1.0.1+2
 
 environment:
   sdk: ^3.13.5
@@ -19,6 +19,7 @@ dependencies:
   pdf: ^3.13.1
   google_mlkit_text_recognition: ^0.17.1
   flutter_svg: ^2.0.17
+  image: ^4.5.4
 
 dev_dependencies:
   flutter_test:

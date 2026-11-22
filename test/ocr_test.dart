@@ -43,6 +43,13 @@ TOTAL \$84.19''');
     expect(r.orderDate, '2026-11-20');
   });
 
+  test('Lines and prices for tapping', () {
+    final r = PhotoRead('Plush Teddy Bear\nMastermind Toys\nWas \$44.99\nNow \$34.99\n123', parsePhotoText('Plush Teddy Bear\nMastermind Toys\nWas \$44.99\nNow \$34.99\n123'));
+    expect(r.lines, ['Plush Teddy Bear', 'Mastermind Toys', r'Was $44.99', r'Now $34.99']);
+    expect(r.prices, [44.99, 34.99]);
+    expect(r.info.price, 34.99);
+  });
+
   test('Nothing readable', () {
     expect(parsePhotoText('').isEmpty, isTrue);
   });

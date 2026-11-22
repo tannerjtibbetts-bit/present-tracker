@@ -15,12 +15,53 @@ class PhotoInfo {
   bool get isEmpty => item == null && price == null && store == null && orderDate == null && orderNumber == null;
 }
 
-/// Reads the text in a photo with the phone's own text recognition (nothing leaves the phone).
-Future<PhotoInfo> readPhoto(String path) async {
+/// Everything read from one photo: the best guesses, plus every line and price found,
+/// so the person can tap the right one when a guess is wrong.
+class PhotoRead {
+  PhotoRead(this.text, this.info) : lines = textLines(text), prices = priceCandidates(text);
+  final String text;
+  final PhotoInfo info;
+  final List<String> lines;
+  final List<double> prices;
+}
+
+List<String> textLines(String text) {
+  final seen = <String>{};
+  return [
+    for (final l in text.split(RegExp(r'\r?\n')).map((l) => l.trim()))
+      if (RegExp(r'[A-Za-z]{2}').hasMatch(l) && l.length <= 80 && seen.add(l.toLowerCase())) l
+  ];
+}
+
+/// Every amount in the text that looks like a price, largest last, without repeats.
+List<double> priceCandidates(String text) {
+  final out = <double>{};
+  for (final m in _priceRe.allMatches(text)) {
+    final v = _toNum(m[1] ?? m[2]!);
+    if (v != null) out.add(v);
+  }
+  return out.toList();
+}
+
+Future<String> _recognise(TextRecognizer rec, String path) async => (await rec.processImage(InputImage.fromFilePath(path))).text;
+
+/// Reads the writing in a photo with the phone's own text recognition (nothing leaves the phone).
+/// [path] should already be upright. If little is found, the photo is also tried turned
+/// each way, in case the camera saved it sideways.
+Future<PhotoRead> readPhoto(String path, {Future<String> Function(String path, int turn)? turned}) async {
   final rec = TextRecognizer(script: TextRecognitionScript.latin);
   try {
-    final r = await rec.processImage(InputImage.fromFilePath(path));
-    return parsePhotoText(r.text);
+    var best = await _recognise(rec, path);
+    if (turned != null && textLines(best).length < 2) {
+      for (final turn in [90, 270, 180]) {
+        final p = await turned(path, turn);
+        if (p == path) break;
+        final t = await _recognise(rec, p);
+        if (textLines(t).length > textLines(best).length) best = t;
+        if (textLines(best).length >= 3) break;
+      }
+    }
+    return PhotoRead(best, parsePhotoText(best));
   } finally {
     await rec.close();
   }
