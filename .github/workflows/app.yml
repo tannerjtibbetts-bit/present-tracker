@@ -4,6 +4,7 @@ name: App
 
 on:
   push:
+    branches: [main]
   workflow_dispatch:
 
 jobs:
@@ -23,6 +24,8 @@ jobs:
   android:
     needs: test
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4
@@ -40,6 +43,16 @@ jobs:
         with:
           name: PresentTracker-android
           path: build/app/outputs/flutter-apk/app-release.apk
+      # Keeps the newest Android app on the "apk" branch too, so it can be fetched with git.
+      - name: Save the app on the apk branch
+        run: |
+          mkdir -p /tmp/apk
+          cp build/app/outputs/flutter-apk/app-release.apk /tmp/apk/PresentTracker.apk
+          cd /tmp/apk
+          git init -q -b apk
+          git add PresentTracker.apk
+          git -c user.name="github-actions" -c user.email="github-actions@users.noreply.github.com" commit -qm "Android app from ${GITHUB_SHA::7}"
+          git push -qf "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" apk
 
   ios:
     needs: test
