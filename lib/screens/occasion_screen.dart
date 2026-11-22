@@ -73,19 +73,25 @@ class _OccasionScreenState extends State<OccasionScreen> {
   }
 
   Widget _topBar(BuildContext context) => Row(children: [
-        FilledButton.icon(
-          style: altButton(occ),
-          onPressed: () => Navigator.pop(context),
-          icon: const Icon(Icons.chevron_left),
-          label: const Text('All occasions'),
+        Flexible(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: FilledButton.icon(
+              style: altButton(occ),
+              onPressed: () => Navigator.pop(context),
+              icon: const Icon(Icons.chevron_left),
+              label: const Text('All occasions'),
+            ),
+          ),
         ),
-        const Spacer(),
+        const SizedBox(width: 8),
         Container(
           decoration: BoxDecoration(color: occ.surface, borderRadius: BorderRadius.circular(99), border: Border.all(color: occ.accent2)),
           child: Row(mainAxisSize: MainAxisSize.min, children: [
-            IconButton(onPressed: () => setState(() => year--), icon: const Icon(Icons.chevron_left), tooltip: 'Previous year'),
+            IconButton(visualDensity: VisualDensity.compact, onPressed: () => setState(() => year--), icon: const Icon(Icons.chevron_left), tooltip: 'Previous year'),
             Text('$year', style: TextStyle(fontWeight: FontWeight.w700, color: occ.ink)),
-            IconButton(onPressed: () => setState(() => year++), icon: const Icon(Icons.chevron_right), tooltip: 'Next year'),
+            IconButton(visualDensity: VisualDensity.compact, onPressed: () => setState(() => year++), icon: const Icon(Icons.chevron_right), tooltip: 'Next year'),
           ]),
         ),
       ]);

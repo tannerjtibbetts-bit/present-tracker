@@ -135,7 +135,7 @@ class StatusChip extends StatelessWidget {
           child: Row(mainAxisSize: MainAxisSize.min, children: [
             Container(width: 7, height: 7, decoration: BoxDecoration(color: _statusDot[gift.status], shape: BoxShape.circle)),
             const SizedBox(width: 6),
-            Text(statusLabels[gift.status]!, style: TextStyle(fontSize: 12, color: occ.ink)),
+            Flexible(child: Text(statusLabels[gift.status]!, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12, color: occ.ink))),
           ]),
         ),
       );
