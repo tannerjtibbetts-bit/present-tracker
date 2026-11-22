@@ -142,8 +142,8 @@ class StatusChip extends StatelessWidget {
 }
 
 /// The gift's photo, or a small present drawing when there's none.
-class Thumb extends StatelessWidget {
-  const Thumb({super.key, required this.gift, required this.occ, this.size = 58, this.radius = 12});
+class GiftThumb extends StatelessWidget {
+  const GiftThumb({super.key, required this.gift, required this.occ, this.size = 58, this.radius = 12});
   final Gift gift;
   final Occ occ;
   final double size;

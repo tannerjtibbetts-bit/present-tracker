@@ -282,7 +282,7 @@ class _OccasionScreenState extends State<OccasionScreen> {
           padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
           decoration: BoxDecoration(border: Border(bottom: BorderSide(color: occ.line))),
           child: Row(children: [
-            Thumb(gift: g, occ: occ),
+            GiftThumb(gift: g, occ: occ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
