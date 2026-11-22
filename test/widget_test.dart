@@ -22,7 +22,9 @@ void main() {
     await tester.pumpWidget(const PresentTrackerApp());
     await tester.pump();
     expect(find.text('Christmas'), findsWidgets);
+    await tester.scrollUntilVisible(find.text('Everleigh'), 300, scrollable: find.byType(Scrollable).first);
     expect(find.text('Everleigh'), findsOneWidget);
+    await tester.scrollUntilVisible(find.text('Christmas').first, -300, scrollable: find.byType(Scrollable).first);
 
     await tester.tap(find.text('Christmas').first);
     await tester.pumpAndSettle();
